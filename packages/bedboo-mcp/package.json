@@ -1,0 +1,30 @@
+{
+  "name": "bedboo-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test test/*.test.mjs",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/express": "2.0.2",
+    "@modelcontextprotocol/node": "2.1.2",
+    "@modelcontextprotocol/server": "2.4.0",
+    "bedboo": "workspace:*",
+    "express": "5.2.1",
+    "mineflayer-pathfinder": "2.4.5",
+    "vec3": "0.1.10",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.4.0",
+    "@types/express": "5.0.6",
+    "@types/node": "24.19.2",
+    "typescript": "7.0.2"
+  }
+}

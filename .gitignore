@@ -1,0 +1,8 @@
+.bedboo/
+.bedboo-mcp/
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+*.tsbuildinfo
