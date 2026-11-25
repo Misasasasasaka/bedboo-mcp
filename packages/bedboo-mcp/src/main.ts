@@ -1,10 +1,12 @@
 import { Console } from 'node:console'
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { once } from 'node:events'
+import { createInterface, type Interface } from 'node:readline'
 import { createMcpExpressApp } from '@modelcontextprotocol/express'
 import { toNodeHandler } from '@modelcontextprotocol/node'
 import { createMcpHandler } from '@modelcontextprotocol/server'
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio'
+import type { GameAgent } from './agent/controller.js'
 import { loadConfig } from './config.js'
 import { JobStore } from './job-store.js'
 import { GameJobs } from './jobs.js'
@@ -20,20 +22,29 @@ function digest(value: string) {
 async function main() {
   const config = loadConfig(process.env)
   const { GameSession } = await import('./bot/session.js')
+  const { makeGameTools } = await import('./game-tools.js')
   const { makeMcpServer } = await import('./mcp/tools.js')
-  const session = new GameSession(config.game)
+  let agent: GameAgent | undefined
+  let terminal: Interface | undefined
+  const session = new GameSession(config.game, connection => agent?.onJoin(connection))
   const jobs = new GameJobs(session, new JobStore(config.database), config.game.commandTimeoutMs)
-  const factory = () => makeMcpServer(session, jobs)
+  const tools = makeGameTools(session, jobs)
+  const factory = () => makeMcpServer(tools)
   let closeTransport: (() => Promise<void>) | undefined
   let shuttingDown: Promise<void> | undefined
 
   function shutdown() {
     return shuttingDown ??= Promise.resolve().then(async () => {
-      session.stop()
+      terminal?.close()
       try {
-        await closeTransport?.()
+        await agent?.close()
       } finally {
-        await jobs.close()
+        session.stop()
+        try {
+          await closeTransport?.()
+        } finally {
+          await jobs.close()
+        }
       }
     })
   }
@@ -48,12 +59,21 @@ async function main() {
   process.once('SIGTERM', stop)
 
   try {
+    if (config.agent) {
+      const { GameAgent } = await import('./agent/controller.js')
+      agent = new GameAgent(config.agent, session, jobs, tools)
+      if (config.mcp.transport !== 'stdio' && process.stdin.isTTY) {
+        terminal = createInterface({ input: process.stdin, terminal: false })
+        terminal.on('line', line => agent?.fromConsole(line))
+        console.error('[Agent] 在终端输入任务并回车。输入 stop 可停止当前任务。')
+      }
+    }
     if (config.mcp.transport === 'stdio') {
       const mcp = factory()
       mcp.server.onclose = stop
       closeTransport = () => mcp.close()
       await mcp.connect(new StdioServerTransport())
-    } else {
+    } else if (config.mcp.transport === 'http') {
       const host = '127.0.0.1'
       const app = createMcpExpressApp({ host, jsonLimit: '4mb' })
       const handler = createMcpHandler(factory)

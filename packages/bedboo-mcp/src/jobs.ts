@@ -52,14 +52,18 @@ export class GameJobs {
     }
   }
 
-  async waitForCommand(id: string, signal?: AbortSignal) {
+  waitForCommand(id: string, signal?: AbortSignal) {
+    return this.waitFor(id, this.commandTimeoutMs + 1000, signal)
+  }
+
+  async waitFor(id: string, waitMs: number, signal?: AbortSignal, cursor?: number, limit?: number) {
     const task = this.active.get(id)
-    if (task) {
+    if (task && waitMs > 0) {
       const timer = new AbortController()
       try {
         await Promise.race([
           task.done,
-          delay(this.commandTimeoutMs + 1000, undefined, {
+          delay(waitMs, undefined, {
             signal: signal ? AbortSignal.any([timer.signal, signal]) : timer.signal,
           }),
         ])
@@ -67,7 +71,7 @@ export class GameJobs {
         timer.abort()
       }
     }
-    return this.view(id)
+    return this.view(id, cursor, limit)
   }
 
   cancel(id: string) {

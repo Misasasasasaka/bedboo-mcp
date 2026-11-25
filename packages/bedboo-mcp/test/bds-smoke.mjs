@@ -46,6 +46,9 @@ async function testBridge(transportName) {
     MC_DATA_DIR: directory,
     MCP_TRANSPORT: transportName,
     MCP_HTTP_TOKEN: 'local-smoke-token',
+    OPENAI_API_KEY: '',
+    AGENT_COMMANDERS: '',
+    AGENT_GOAL: '',
   }
   const client = new Client({ name: 'integration-test', version: '0.1.0' })
   let child

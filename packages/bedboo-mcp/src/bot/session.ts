@@ -29,7 +29,10 @@ export class GameSession {
   private closing = false
   private lastError?: string
 
-  constructor(private readonly config: Config['game']) {}
+  constructor(
+    private readonly config: Config['game'],
+    private readonly onOnline?: (connection: Connection) => void,
+  ) {}
 
   start() {
     mkdirSync(this.config.profilesDir, { recursive: true, mode: 0o700 })
@@ -65,8 +68,10 @@ export class GameSession {
         this.scheduleReconnect()
       })
       bot.on('spawn', () => {
+        const firstSpawn = !current.ready
         current.ready = true
         this.lastError = undefined
+        if (firstSpawn) this.onOnline?.({ bot, signal: current.controller.signal })
       })
       bot.loadPlugin(pathfinder as unknown as Plugin)
     } catch (error) {
